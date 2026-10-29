@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Roadmap Planning App</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Fonts: Inter -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- html2canvas and jsPDF for Export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f4f6f9;
+    }
+    /* Custom Scrollbar */
+    .custom-scrollbar::-webkit-scrollbar {
+      height: 10px;
+      width: 10px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #e5e7eb;
+      border-radius: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #9ca3af;
+      border-radius: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #6b7280;
+    }
+    
+    /* Grid background pattern */
+    .grid-bg {
+      background-size: 100px 100%;
+      background-image: linear-gradient(to right, #f3f4f6 1px, transparent 1px);
+    }
+  </style>
+</head>
+<body class="h-screen flex flex-col text-slate-800 antialiased select-none">
+
+  <!-- TOP BAR / HEADER -->
+  <header class="bg-white border-b border-slate-200 px-6 py-3 flex flex-wrap justify-between items-center gap-4 shrink-0 shadow-sm z-20">
+    <div class="flex items-center gap-3">
+      <div class="bg-blue-600 text-white p-2.5 rounded-xl shadow-sm">
+        <i class="fa-solid me-0 fa-map text-xl"></i>
+      </div>
+      <div>
+        <h1 class="font-bold text-xl text-slate-900 leading-tight">Roadmap Planning</h1>
+        <p class="text-xs text-slate-500 font-medium">Strategisch overzicht & kwartaalplanning</p>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="flex items-center gap-2 flex-wrap">
+      <!-- Time Range Nav -->
+      <div class="flex items-center bg-slate-100 rounded-lg p-1 border border-slate-200 mr-2">
+        <button id="btnPrevQ" class="px-2.5 py-1 text-slate-600 hover:text-slate-900 hover:bg-white rounded transition text-sm font-medium" title="Vorige kwartalen">
+          <i class="fa-solid fa-chevron-left"></i>
+        </button>
+        <button id="btnResetDate" class="px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-white rounded transition">
+          Vandaag
+        </button>
+        <button id="btnNextQ" class="px-2.5 py-1 text-slate-600 hover:text-slate-900 hover:bg-white rounded transition text-sm font-medium" title="Volgende kwartalen">
+          <i class="fa-solid fa-chevron-right"></i>
+        </button>
+      </div>
+
+      <!-- Add Buttons -->
+      <button id="btnAddProject" class="bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs px-3.5 py-2 rounded-lg transition shadow-sm flex items-center gap-1.5">
+        <i class="fa-solid fa-plus"></i> Project
+      </button>
+      <button id="btnAddMilestone" class="bg-purple-600 hover:bg-purple-700 text-white font-medium text-xs px-3.5 py-2 rounded-lg transition shadow-sm flex items-center gap-1.5">
+        <i class="fa-solid fa-flag"></i> Mijlpaal
+      </button>
+
+      <div class="h-6 w-[1px] bg-slate-200 mx-1"></div>
+
+      <!-- Backup Buttons -->
+      <button id="btnExportJSON" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-xs px-3 py-2 rounded-lg transition flex items-center gap-1.5 border border-slate-300" title="Exporteer Backup (JSON)">
+        <i class="fa-solid fa-download"></i> Backup
+      </button>
+      <label class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-xs px-3 py-2 rounded-lg transition flex items-center gap-1.5 border border-slate-300 cursor-pointer" title="Importeer Backup (JSON)">
+        <i class="fa-solid fa-upload"></i> Herstel
+        <input type="file" id="fileImportJSON" class="hidden" accept=".json">
+      </label>
+
+      <!-- PDF / Image Export -->
+      <div class="relative inline-block text-left" id="exportMenuContainer">
+        <button id="btnExportMenu" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs px-3.5 py-2 rounded-lg transition shadow-sm flex items-center gap-1.5">
+          <i class="fa-solid fa-file-export"></i> Exporteer <i class="fa-solid fa-chevron-down text-[10px]"></i>
+        </button>
+        <div id="exportDropdown" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-slate-100 py-1 z-30">
+          <button id="btnExportPDF" class="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-2">
+            <i class="fa-solid fa-file-pdf text-red-500 text-sm"></i> PDF Document
+          </button>
+          <button id="btnExportPNG" class="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-2">
+            <i class="fa-solid fa-file-image text-emerald-500 text-sm"></i> PNG Afbeelding
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN ROADMAP CONTAINER -->
+  <main class="flex-1 overflow-hidden p-4 md:p-6 flex flex-col">
+    <div id="roadmapCaptureArea" class="bg-white rounded-2xl shadow-sm border border-slate-200 flex-1 flex flex-col overflow-hidden relative">
+      
+      <!-- ROADMAP HEADER ROW (TIMELINE & QUARTERS) -->
+      <div class="flex border-b border-slate-200 bg-slate-50/80 shrink-0 z-10">
+        <!-- Sidebar header cell -->
+        <div class="w-48 md:w-56 shrink-0 p-4 font-bold text-slate-600 uppercase tracking-wider text-xs border-r border-slate-200 flex items-center justify-between">
+          <span>Buckets / Categorieën</span>
+          <i class="fa-solid fa-layer-group text-slate-400"></i>
+        </div>
+        
+        <!-- Timeline Scroll Header Container -->
+        <div id="timelineHeaderScroll" class="flex-1 overflow-hidden">
+          <div id="quartersHeaderContainer" class="flex relative min-w-full h-12">
+            <!-- Quarters injected here dynamically -->
+          </div>
+        </div>
+      </div>
+
+      <!-- ROADMAP BODY (BUCKETS + GRID) -->
+      <div id="roadmapBody" class="flex-1 flex overflow-x-auto overflow-y-auto custom-scrollbar relative">
+        
+        <!-- SIDEBAR (BUCKETS LABELS) -->
+        <div class="w-48 md:w-56 shrink-0 border-r border-slate-200 bg-slate-50/50 flex flex-col z-10 sticky left-0 shadow-[4px_0_10px_-3px_rgba(0,0,0,0.05)]">
+          <!-- Milestones Bucket Header -->
+          <div id="bucketHeader-milestones" class="min-h-[70px] p-3 flex items-center border-b border-slate-200 bg-indigo-600 text-white font-bold text-xs md:text-sm uppercase tracking-wider transition-all">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-flag text-base"></i>
+              <span>MILESTONES</span>
+            </div>
+          </div>
+
+          <!-- Dynamic Bucket Headers -->
+          <div id="bucketHeader-maintenance" class="min-h-[90px] p-3 flex items-center border-b border-slate-200 bg-teal-600 text-white font-bold text-xs md:text-sm uppercase tracking-wider transition-all">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-wrench text-base"></i>
+              <span>MAINTENANCE</span>
+            </div>
+          </div>
+
+          <div id="bucketHeader-projects" class="min-h-[90px] p-3 flex items-center border-b border-slate-200 bg-emerald-600 text-white font-bold text-xs md:text-sm uppercase tracking-wider transition-all">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-diagram-project text-base"></i>
+              <span>PROJECTS</span>
+            </div>
+          </div>
+
+          <div id="bucketHeader-product_dev" class="min-h-[90px] p-3 flex items-center border-b border-slate-200 bg-amber-500 text-white font-bold text-xs md:text-sm uppercase tracking-wider transition-all">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-rocket text-base"></i>
+              <span>PRODUCT DEV</span>
+            </div>
+          </div>
+
+          <div id="bucketHeader-tech_strategy" class="min-h-[90px] p-3 flex items-center border-b border-slate-200 bg-rose-600 text-white font-bold text-xs md:text-sm uppercase tracking-wider transition-all">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-microchip text-base"></i>
+              <span>TECH STRATEGY</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- TIMELINE GRID CONTENT AREA -->
+        <div id="timelineGridContent" class="flex-1 relative min-h-full min-w-[800px]">
+          <!-- Month grid vertical line dividers -->
+          <div id="gridBackground" class="absolute inset-0 flex pointer-events-none"></div>
+
+          <!-- Today Vertical Line Indicator -->
+          <div id="todayIndicator" class="absolute top-0 bottom-0 z-20 pointer-events-none flex flex-col items-center" style="left: -100px;">
+            <div class="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap -mt-1">Vandaag</div>
+            <div class="w-[2px] h-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]"></div>
+          </div>
+
+          <!-- SWIMLANES FOR ITEMS -->
+          <!-- Milestones Swimlane -->
+          <div id="lane-milestones" class="min-h-[70px] border-b border-slate-200 relative bg-slate-50/30"></div>
+
+          <!-- Bucket Swimlanes -->
+          <div id="lane-maintenance" class="min-h-[90px] border-b border-slate-200 relative"></div>
+          <div id="lane-projects" class="min-h-[90px] border-b border-slate-200 relative"></div>
+          <div id="lane-product_dev" class="min-h-[90px] border-b border-slate-200 relative"></div>
+          <div id="lane-tech_strategy" class="min-h-[90px] border-b border-slate-200 relative"></div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- MODAL FOR PROJECT ADD / EDIT -->
+  <div id="projectModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-white rounded-2xl shadow-xl border border-slate-100 w-full max-w-md overflow-hidden transform transition-all">
+      <div class="px-6 py-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+        <h3 id="projectModalTitle" class="font-bold text-slate-800 text-base">Project Toevoegen</h3>
+        <button id="btnCloseProjectModal" class="text-slate-400 hover:text-slate-600 p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      <form id="projectForm" class="p-6 space-y-4">
+        <input type="hidden" id="projectId">
+        
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Titel van het project</label>
+          <input type="text" id="projectTitle" required placeholder="bijv. API Herstructurering" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Bucket / Categorie</label>
+          <select id="projectBucket" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white">
+            <option value="maintenance">Maintenance</option>
+            <option value="projects">Projects</option>
+            <option value="product_dev">Product Development</option>
+            <option value="tech_strategy">Tech Strategy</option>
+          </select>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Begindatum</label>
+            <input type="date" id="projectStartDate" required class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Einddatum</label>
+            <input type="date" id="projectEndDate" required class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Kleur / Accent</label>
+          <div class="flex items-center gap-3">
+            <input type="color" id="projectColor" value="#3b82f6" class="h-9 w-14 rounded cursor-pointer border border-slate-300 p-0.5">
+            <span class="text-xs text-slate-500">Kies een aangepaste kleur voor de balk</span>
+          </div>
+        </div>
+
+        <div class="pt-4 border-t border-slate-100 flex justify-between items-center">
+          <button type="button" id="btnDeleteProject" class="px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg transition hidden">
+            <i class="fa-solid fa-trash-can mr-1"></i> Verwijderen
+          </button>
+          <div class="flex gap-2 ml-auto">
+            <button type="button" id="btnCancelProject" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition">Annuleren</button>
+            <button type="submit" class="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition shadow-sm">Opslaan</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL FOR MILESTONE ADD / EDIT -->
+  <div id="milestoneModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-white rounded-2xl shadow-xl border border-slate-100 w-full max-w-md overflow-hidden transform transition-all">
+      <div class="px-6 py-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+        <h3 id="milestoneModalTitle" class="font-bold text-slate-800 text-base">Mijlpaal Toevoegen</h3>
+        <button id="btnCloseMilestoneModal" class="text-slate-400 hover:text-slate-600 p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      <form id="milestoneForm" class="p-6 space-y-4">
+        <input type="hidden" id="milestoneId">
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Titel van de mijlpaal</label>
+          <input type="text" id="milestoneTitle" required placeholder="bijv. Alpha Release v1.0" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Datum</label>
+          <input type="date" id="milestoneDate" required class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Symbool / Icoon</label>
+          <select id="milestoneIcon" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none bg-white">
+            <option value="fa-diamond">◆ Ruit (Diamond)</option>
+            <option value="fa-flag">🚩 Vlag (Flag)</option>
+            <option value="fa-star">★ Ster (Star)</option>
+            <option value="fa-trophy">🏆 Trofee (Trophy)</option>
+            <option value="fa-location-dot">📍 Marker (Pin)</option>
+          </select>
+        </div>
+
+        <div class="pt-4 border-t border-slate-100 flex justify-between items-center">
+          <button type="button" id="btnDeleteMilestone" class="px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg transition hidden">
+            <i class="fa-solid fa-trash-can mr-1"></i> Verwijderen
+          </button>
+          <div class="flex gap-2 ml-auto">
+            <button type="button" id="btnCancelMilestone" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition">Annuleren</button>
+            <button type="submit" class="px-4 py-2 text-xs font-semibold text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition shadow-sm">Opslaan</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- APPLICATION LOGIC SCRIPT -->
+  <script>
+    // --- APP STATE ---
+    const BUCKETS = [
+      { id: 'maintenance', name: 'Maintenance', color: '#0d9488' },
+      { id: 'projects', name: 'Projects', color: '#059669' },
+      { id: 'product_dev', name: 'Product Development', color: '#d97706' },
+      { id: 'tech_strategy', name: 'Tech Strategy', color: '#e11d48' }
+    ];
+
+    let projects = [];
+    let milestones = [];
+
+    // View State: 4 Quarters window
+    let currentStartQuarter = getQuarterObject(new Date());
+
+    // --- INITIALIZATION ---
+    window.onload = function () {
+      loadDataFromStorage();
+      setupEventListeners();
+      render();
+    };
+
+    function getQuarterObject(date) {
+      const year = date.getFullYear();
+      const month = date.getMonth(); // 0-11
+      const q = Math.floor(month / 3) + 1; // 1-4
+      return { year, quarter: q };
+    }
+
+    // Default Seed Data if Storage is Empty
+    function loadDataFromStorage() {
+      const savedProjects = localStorage.getItem('roadmap_projects');
+      const savedMilestones = localStorage.getItem('roadmap_milestones');
+
+      if (savedProjects && savedMilestones) {
+        projects = JSON.parse(savedProjects);
+        milestones = JSON.parse(savedMilestones);
+      } else {
+        // Dummy data aligned with current year
+        const currentYear = new Date().getFullYear();
+        
+        projects = [
+          {
+            id: 'p1',
+            title: 'COMMENT PLATFORM',
+            bucket: 'projects',
+            startDate: `${currentYear}-01-10`,
+            endDate: `${currentYear}-03-15`,
+            color: '#10b981'
+          },
+          {
+            id: 'p2',
+            title: 'MOBILE VERSION',
+            bucket: 'projects',
+            startDate: `${currentYear}-01-05`,
+            endDate: `${currentYear}-03-28`,
+            color: '#059669'
+          },
+          {
+            id: 'p3',
+            title: 'LOCALIZATION',
+            bucket: 'projects',
+            startDate: `${currentYear}-03-20`,
+            endDate: `${currentYear}-06-15`,
+            color: '#10b981'
+          },
+          {
+            id: 'p4',
+            title: 'CUSTOM COLORS',
+            bucket: 'projects',
+            startDate: `${currentYear}-04-10`,
+            endDate: `${currentYear}-05-25`,
+            color: '#047857'
+          },
+          {
+            id: 'p5',
+            title: 'DATABASE OPTIMIZATION',
+            bucket: 'maintenance',
+            startDate: `${currentYear}-01-15`,
+            endDate: `${currentYear}-04-10`,
+            color: '#0d9488'
+          },
+          {
+            id: 'p6',
+            title: 'SECURITY PATCHES Q2',
+            bucket: 'maintenance',
+            startDate: `${currentYear}-04-01`,
+            endDate: `${currentYear}-06-30`,
+            color: '#14b8a6'
+          },
+          {
+            id: 'p7',
+            title: 'MARKETO INTEGRATION',
+            bucket: 'product_dev',
+            startDate: `${currentYear}-01-15`,
+            endDate: `${currentYear}-02-28`,
+            color: '#f59e0b'
+          },
+          {
+            id: 'p8',
+            title: 'DROPBOX & HUBSPOT',
+            bucket: 'product_dev',
+            startDate: `${currentYear}-03-01`,
+            endDate: `${currentYear}-06-10`,
+            color: '#d97706'
+          },
+          {
+            id: 'p9',
+            title: 'CLOUD MIGRATION',
+            bucket: 'tech_strategy',
+            startDate: `${currentYear}-02-01`,
+            endDate: `${currentYear}-05-15`,
+            color: '#e11d48'
+          },
+          {
+            id: 'p10',
+            title: 'AI ENGINE ARCHITECTURE',
+            bucket: 'tech_strategy',
+            startDate: `${currentYear}-06-01`,
+            endDate: `${currentYear}-09-30`,
+            color: '#f43f5e'
+          }
+        ];
+
+        milestones = [
+          {
+            id: 'm1',
+            title: 'ARCHIVING BETA RELEASE',
+            date: `${currentYear}-02-20`,
+            icon: 'fa-diamond'
+          },
+          {
+            id: 'm2',
+            title: 'ANNUAL TECH CONFERENCE',
+            date: `${currentYear}-05-10`,
+            icon: 'fa-flag'
+          },
+          {
+            id: 'm3',
+            title: 'EXPORT ALPHA RELEASE',
+            date: `${currentYear}-07-15`,
+            icon: 'fa-diamond'
+          },
+          {
+            id: 'm4',
+            title: 'SECURITY AUDIT COMPLETE',
+            date: `${currentYear}-10-05`,
+            icon: 'fa-trophy'
+          }
+        ];
+
+        saveDataToStorage();
+      }
+    }
+
+    function saveDataToStorage() {
+      localStorage.setItem('roadmap_projects', JSON.stringify(projects));
+      localStorage.setItem('roadmap_milestones', JSON.stringify(milestones));
+    }
+
+    // --- TIMELINE CALCULATIONS ---
+    function getVisibleQuarters() {
+      const quarters = [];
+      let { year, quarter } = currentStartQuarter;
+
+      for (let i = 0; i < 4; i++) {
+        quarters.push({ year, quarter });
+        quarter++;
+        if (quarter > 4) {
+          quarter = 1;
+          year++;
+        }
+      }
+      return quarters;
+    }
+
+    function getTimelineDateRange() {
+      const quarters = getVisibleQuarters();
+      const firstQ = quarters[0];
+      const lastQ = quarters[quarters.length - 1];
+
+      const startDate = new Date(firstQ.year, (firstQ.quarter - 1) * 3, 1);
+      const endDate = new Date(lastQ.year, lastQ.quarter * 3, 0); // last day of quarter
+
+      return { startDate, endDate, quarters };
+    }
+
+    // --- RENDER ENGINE ---
+    function render() {
+      const { startDate, endDate, quarters } = getTimelineDateRange();
+      const totalDays = Math.round((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+
+      renderHeaderTimeline(quarters);
+      renderGridBackground(quarters);
+      renderTodayIndicator(startDate, totalDays);
+      renderMilestones(startDate, totalDays);
+      renderBuckets(startDate, totalDays);
+    }
+
+    function renderHeaderTimeline(quarters) {
+      const container = document.getElementById('quartersHeaderContainer');
+      container.innerHTML = '';
+
+      quarters.forEach(q => {
+        const qDiv = document.createElement('div');
+        qDiv.className = 'flex-1 border-r border-slate-200 flex flex-col justify-center items-center bg-slate-100/70 font-bold text-slate-700 text-xs md:text-sm';
+        qDiv.innerHTML = `
+          <span>Q${q.quarter} ${q.year}</span>
+          <div class="flex w-full text-[10px] text-slate-400 font-normal border-t border-slate-200 mt-1 pt-0.5 justify-around">
+            <span>Maand 1</span>
+            <span>Maand 2</span>
+            <span>Maand 3</span>
+          </div>
+        `;
+        container.appendChild(qDiv);
+      });
+    }
+
+    function renderGridBackground(quarters) {
+      const bg = document.getElementById('gridBackground');
+      bg.innerHTML = '';
+      
+      // Render 12 month columns across 4 quarters
+      for (let i = 0; i < 12; i++) {
+        const col = document.createElement('div');
+        col.className = `flex-1 border-r ${i % 3 === 2 ? 'border-slate-300' : 'border-slate-100'}`;
+        bg.appendChild(col);
+      }
+    }
+
+    function renderTodayIndicator(startDate, totalDays) {
+      const today = new Date();
+      const todayIndicator = document.getElementById('todayIndicator');
+
+      if (today < startDate || today > getTimelineDateRange().endDate) {
+        todayIndicator.style.display = 'none';
+        return;
+      }
+
+      todayIndicator.style.display = 'flex';
+      const daysFromStart = (today - startDate) / (1000 * 60 * 60 * 24);
+      const percentage = (daysFromStart / totalDays) * 100;
+      todayIndicator.style.left = `${percentage}%`;
+    }
+
+    // --- OVERLAP & TRACK LAYOUT LOGIC ---
+    function renderBuckets(startDate, totalDays) {
+      const viewStartMs = startDate.getTime();
+      const viewEndMs = getTimelineDateRange().endDate.getTime() + (24 * 60 * 60 * 1000) - 1; // Einde van de laatste dag
+      const totalDurationMs = viewEndMs - viewStartMs;
+
+      BUCKETS.forEach(bucket => {
+        const lane = document.getElementById(`lane-${bucket.id}`);
+        lane.innerHTML = '';
+
+        // Filter projects that fall within or overlap the current visible range
+        const bucketProjects = projects.filter(p => {
+          if (p.bucket !== bucket.id) return false;
+          const pStart = new Date(p.startDate).getTime();
+          const pEnd = new Date(p.endDate).getTime() + (24 * 60 * 60 * 1000) - 1;
+          
+          // Must overlap with the visible view window
+          return pEnd >= viewStartMs && pStart <= viewEndMs;
+        });
+
+        // Sort projects by startDate
+        bucketProjects.sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
+
+        // Assign tracks for overlaps (only among visible projects)
+        const tracks = []; // Array of end dates per track
+
+        bucketProjects.forEach(project => {
+          const pStart = new Date(project.startDate).getTime();
+          const pEnd = new Date(project.endDate).getTime() + (24 * 60 * 60 * 1000) - 1;
+
+          let trackIndex = -1;
+          for (let i = 0; i < tracks.length; i++) {
+            if (tracks[i] < pStart) {
+              trackIndex = i;
+              break;
+            }
+          }
+
+          if (trackIndex === -1) {
+            tracks.push(pEnd);
+            trackIndex = tracks.length - 1;
+          } else {
+            tracks[trackIndex] = pEnd;
+          }
+
+          project.trackIndex = trackIndex;
+        });
+
+        // Set lane height dynamically based on track count
+        const trackCount = Math.max(1, tracks.length);
+        const laneHeight = Math.max(90, trackCount * 44 + 16);
+        lane.style.height = `${laneHeight}px`;
+
+        // Update corresponding bucket header height
+        const header = document.getElementById(`bucketHeader-${bucket.id}`);
+        if (header) {
+          header.style.height = `${laneHeight}px`;
+        }
+
+        // Render project elements
+        bucketProjects.forEach(project => {
+          const pStartMs = new Date(project.startDate).getTime();
+          // Add full day to endDate to cover the entire last day
+          const pEndMs = new Date(project.endDate).getTime() + (24 * 60 * 60 * 1000) - 1;
+
+          // Clamped start and end times relative to the view range
+          const clampedStartMs = Math.max(viewStartMs, pStartMs);
+          const clampedEndMs = Math.min(viewEndMs, pEndMs);
+
+          // Calculate horizontal positioning percentage strictly based on total view duration
+          const leftPct = ((clampedStartMs - viewStartMs) / totalDurationMs) * 100;
+          const widthPct = ((clampedEndMs - clampedStartMs) / totalDurationMs) * 100;
+
+          // Create DOM Element
+          const card = document.createElement('div');
+          card.className = 'absolute rounded-lg px-3 py-1.5 shadow-sm border border-black/10 text-white cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all flex flex-col justify-center overflow-hidden group';
+          card.style.left = `${leftPct}%`;
+          card.style.width = `${Math.max(0.5, widthPct)}%`; // Min width for visibility
+          card.style.top = `${12 + project.trackIndex * 44}px`;
+          card.style.height = '36px';
+          card.style.backgroundColor = project.color || bucket.color;
+
+          card.innerHTML = `
+            <div class="flex items-center justify-between gap-1">
+              <span class="font-bold text-xs truncate uppercase tracking-wider">${escapeHtml(project.title)}</span>
+              <i class="fa-solid fa-pen text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"></i>
+            </div>
+            <span class="text-[9px] opacity-90 truncate leading-none">${formatDateShort(project.startDate)} - ${formatDateShort(project.endDate)}</span>
+          `;
+
+          card.onclick = () => openProjectModal(project);
+          lane.appendChild(card);
+        });
+      });
+    }
+
+    function renderMilestones(startDate, totalDays) {
+      const lane = document.getElementById('lane-milestones');
+      lane.innerHTML = '';
+
+      const viewStartMs = startDate.getTime();
+      const viewEndMs = getTimelineDateRange().endDate.getTime() + (24 * 60 * 60 * 1000) - 1;
+      const totalDurationMs = viewEndMs - viewStartMs;
+
+      milestones.forEach(m => {
+        const mTime = new Date(m.date).getTime();
+
+        // Check if milestone falls strictly within visible timeline range
+        if (mTime >= viewStartMs && mTime <= viewEndMs) {
+          const leftPct = ((mTime - viewStartMs) / totalDurationMs) * 100;
+
+          const item = document.createElement('div');
+          item.className = 'absolute top-1/2 -translate-y-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-indigo-900 text-white px-2.5 py-1 rounded-full shadow border border-indigo-400/30 cursor-pointer hover:scale-105 transition-all z-10 whitespace-nowrap text-xs font-semibold';
+          item.style.left = `${leftPct}%`;
+
+          item.innerHTML = `
+            <i class="fa-solid ${m.icon || 'fa-diamond'} text-amber-300"></i>
+            <span>${escapeHtml(m.title)}</span>
+          `;
+
+          item.onclick = () => openMilestoneModal(m);
+          lane.appendChild(item);
+        }
+      });
+    }
+
+    // --- MODALS & FORM HANDLERS ---
+    function openProjectModal(project = null) {
+      const modal = document.getElementById('projectModal');
+      const form = document.getElementById('projectForm');
+      const titleEl = document.getElementById('projectModalTitle');
+      const btnDelete = document.getElementById('btnDeleteProject');
+
+      form.reset();
+
+      if (project) {
+        titleEl.textContent = 'Project Bewerken';
+        document.getElementById('projectId').value = project.id;
+        document.getElementById('projectTitle').value = project.title;
+        document.getElementById('projectBucket').value = project.bucket;
+        document.getElementById('projectStartDate').value = project.startDate;
+        document.getElementById('projectEndDate').value = project.endDate;
+        document.getElementById('projectColor').value = project.color || '#3b82f6';
+        btnDelete.classList.remove('hidden');
+      } else {
+        titleEl.textContent = 'Project Toevoegen';
+        document.getElementById('projectId').value = '';
+        btnDelete.classList.add('hidden');
+        
+        // Default dates: Today -> Today + 30 days
+        const todayStr = new Date().toISOString().split('T')[0];
+        const nextMonth = new Date();
+        nextMonth.setDate(nextMonth.getDate() + 30);
+        document.getElementById('projectStartDate').value = todayStr;
+        document.getElementById('projectEndDate').value = nextMonth.toISOString().split('T')[0];
+      }
+
+      modal.classList.remove('hidden');
+    }
+
+    function closeProjectModal() {
+      document.getElementById('projectModal').classList.add('hidden');
+    }
+
+    function openMilestoneModal(milestone = null) {
+      const modal = document.getElementById('milestoneModal');
+      const form = document.getElementById('milestoneForm');
+      const titleEl = document.getElementById('milestoneModalTitle');
+      const btnDelete = document.getElementById('btnDeleteMilestone');
+
+      form.reset();
+
+      if (milestone) {
+        titleEl.textContent = 'Mijlpaal Bewerken';
+        document.getElementById('milestoneId').value = milestone.id;
+        document.getElementById('milestoneTitle').value = milestone.title;
+        document.getElementById('milestoneDate').value = milestone.date;
+        document.getElementById('milestoneIcon').value = milestone.icon || 'fa-diamond';
+        btnDelete.classList.remove('hidden');
+      } else {
+        titleEl.textContent = 'Mijlpaal Toevoegen';
+        document.getElementById('milestoneId').value = '';
+        btnDelete.classList.add('hidden');
+        document.getElementById('milestoneDate').value = new Date().toISOString().split('T')[0];
+      }
+
+      modal.classList.remove('hidden');
+    }
+
+    function closeMilestoneModal() {
+      document.getElementById('milestoneModal').classList.add('hidden');
+    }
+
+    // --- EVENT LISTENERS ---
+    function setupEventListeners() {
+      // Navigation
+      document.getElementById('btnPrevQ').onclick = () => {
+        currentStartQuarter.quarter--;
+        if (currentStartQuarter.quarter < 1) {
+          currentStartQuarter.quarter = 4;
+          currentStartQuarter.year--;
+        }
+        render();
+      };
+
+      document.getElementById('btnNextQ').onclick = () => {
+        currentStartQuarter.quarter++;
+        if (currentStartQuarter.quarter > 4) {
+          currentStartQuarter.quarter = 1;
+          currentStartQuarter.year++;
+        }
+        render();
+      };
+
+      document.getElementById('btnResetDate').onclick = () => {
+        currentStartQuarter = getQuarterObject(new Date());
+        render();
+      };
+
+      // Project Form
+      document.getElementById('btnAddProject').onclick = () => openProjectModal();
+      document.getElementById('btnCloseProjectModal').onclick = closeProjectModal;
+      document.getElementById('btnCancelProject').onclick = closeProjectModal;
+
+      document.getElementById('projectForm').onsubmit = (e) => {
+        e.preventDefault();
+        const id = document.getElementById('projectId').value;
+        const title = document.getElementById('projectTitle').value;
+        const bucket = document.getElementById('projectBucket').value;
+        const startDate = document.getElementById('projectStartDate').value;
+        const endDate = document.getElementById('projectEndDate').value;
+        const color = document.getElementById('projectColor').value;
+
+        if (new Date(startDate) > new Date(endDate)) {
+          alert('De begindatum kan niet na de einddatum liggen.');
+          return;
+        }
+
+        if (id) {
+          const index = projects.findIndex(p => p.id === id);
+          if (index !== -1) {
+            projects[index] = { id, title, bucket, startDate, endDate, color };
+          }
+        } else {
+          projects.push({
+            id: 'p_' + Date.now(),
+            title,
+            bucket,
+            startDate,
+            endDate,
+            color
+          });
+        }
+
+        saveDataToStorage();
+        closeProjectModal();
+        render();
+      };
+
+      document.getElementById('btnDeleteProject').onclick = () => {
+        const id = document.getElementById('projectId').value;
+        if (id) {
+          projects = projects.filter(p => p.id !== id);
+          saveDataToStorage();
+          closeProjectModal();
+          render();
+        }
+      };
+
+      // Milestone Form
+      document.getElementById('btnAddMilestone').onclick = () => openMilestoneModal();
+      document.getElementById('btnCloseMilestoneModal').onclick = closeMilestoneModal;
+      document.getElementById('btnCancelMilestone').onclick = closeMilestoneModal;
+
+      document.getElementById('milestoneForm').onsubmit = (e) => {
+        e.preventDefault();
+        const id = document.getElementById('milestoneId').value;
+        const title = document.getElementById('milestoneTitle').value;
+        const date = document.getElementById('milestoneDate').value;
+        const icon = document.getElementById('milestoneIcon').value;
+
+        if (id) {
+          const index = milestones.findIndex(m => m.id === id);
+          if (index !== -1) {
+            milestones[index] = { id, title, date, icon };
+          }
+        } else {
+          milestones.push({
+            id: 'm_' + Date.now(),
+            title,
+            date,
+            icon
+          });
+        }
+
+        saveDataToStorage();
+        closeMilestoneModal();
+        render();
+      };
+
+      document.getElementById('btnDeleteMilestone').onclick = () => {
+        const id = document.getElementById('milestoneId').value;
+        if (id) {
+          milestones = milestones.filter(m => m.id !== id);
+          saveDataToStorage();
+          closeMilestoneModal();
+          render();
+        }
+      };
+
+      // Backup Export / Import
+      document.getElementById('btnExportJSON').onclick = () => {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ projects, milestones }, null, 2));
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", `roadmap_backup_${new Date().toISOString().split('T')[0]}.json`);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+      };
+
+      document.getElementById('fileImportJSON').onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          try {
+            const parsed = JSON.parse(event.target.result);
+            if (parsed.projects && parsed.milestones) {
+              projects = parsed.projects;
+              milestones = parsed.milestones;
+              saveDataToStorage();
+              render();
+            } else {
+              alert('Ongeldig back-up bestand.');
+            }
+          } catch (err) {
+            alert('Fout bij inlezen van het bestand.');
+          }
+        };
+        reader.readAsText(file);
+      };
+
+      // Export Dropdown Toggle
+      const exportBtn = document.getElementById('btnExportMenu');
+      const exportDropdown = document.getElementById('exportDropdown');
+      exportBtn.onclick = (e) => {
+        e.stopPropagation();
+        exportDropdown.classList.toggle('hidden');
+      };
+
+      document.onclick = () => {
+        exportDropdown.classList.add('hidden');
+      };
+
+      // PDF & PNG Export
+      document.getElementById('btnExportPNG').onclick = () => exportRoadmap('png');
+      document.getElementById('btnExportPDF').onclick = () => exportRoadmap('pdf');
+    }
+
+    // --- EXPORT FUNCTIONALITY ---
+    function exportRoadmap(format) {
+      const area = document.getElementById('roadmapCaptureArea');
+
+      html2canvas(area, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff'
+      }).then(canvas => {
+        if (format === 'png') {
+          const imgData = canvas.toDataURL('image/png');
+          const link = document.createElement('a');
+          link.download = `roadmap_${new Date().toISOString().split('T')[0]}.png`;
+          link.href = imgData;
+          link.click();
+        } else if (format === 'pdf') {
+          const { jsPDF } = window.jspdf;
+          const imgData = canvas.toDataURL('image/png');
+          const pdf = new jsPDF('landscape', 'pt', [canvas.width, canvas.height]);
+          pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+          pdf.save(`roadmap_${new Date().toISOString().split('T')[0]}.pdf`);
+        }
+      });
+    }
+
+    // --- UTILS ---
+    function formatDateShort(dateStr) {
+      const d = new Date(dateStr);
+      const months = ['Jan', 'Feb', 'Mrt', 'Apr', 'Mei', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dec'];
+      return `${d.getDate()} ${months[d.getMonth()]}`;
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    }
+  </script>
+</body>
+</html>
